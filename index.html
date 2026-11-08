@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Transformation Control Tower: a 3D portfolio view on illustrative sample data.">
+<title>Transformation Control Tower</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Concept: a dark holographic command room. A 3D ring of towers (height = benefit realised, outline = target,
+   colour = status) sits above three live charts; the list, detail panel and Board note sit below. One deliberate dark look. */
+:root{
+  color-scheme:dark;
+  --bg:#060a12; --panel:rgba(13,22,38,.68); --ink:#e8f1ff; --muted:#8ea3bf; --line:rgba(120,190,255,.17);
+  --accent:#5bd6ff; --violet:#9b8cff; --good:#3ddc97; --warn:#ffb547; --bad:#ff6b6b;
+  --good-bg:rgba(61,220,151,.13); --warn-bg:rgba(255,181,71,.13); --bad-bg:rgba(255,107,107,.14);
+  --display:'Chakra Petch',system-ui,sans-serif; --body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;color:var(--ink);font:14px/1.5 var(--body);
+  background:radial-gradient(1100px 560px at 82% -8%,rgba(91,214,255,.11),transparent 62%),radial-gradient(900px 520px at -8% 28%,rgba(155,140,255,.09),transparent 62%),var(--bg);
+  padding-block:22px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:linear-gradient(rgba(91,214,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(91,214,255,.05) 1px,transparent 1px);
+  background-size:52px 52px;-webkit-mask-image:radial-gradient(ellipse at 50% 15%,#000 15%,transparent 72%);mask-image:radial-gradient(ellipse at 50% 15%,#000 15%,transparent 72%)}
+.wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;display:grid;gap:16px}
+h1{font:600 clamp(26px,4vw,38px)/1.1 var(--display);margin:0;letter-spacing:.01em;text-wrap:balance}
+h2{font:600 12px/1.3 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:0 0 12px}
+p{margin:0}
+.top{display:flex;flex-wrap:wrap;gap:14px 28px;justify-content:space-between;align-items:flex-end}
+.top>div{min-width:0;max-width:64ch}
+.badge{display:inline-block;font:500 11px var(--mono);letter-spacing:.06em;padding:4px 9px;border:1px solid var(--line);border-radius:999px;color:var(--warn);background:var(--warn-bg);margin-bottom:10px}
+.sub{color:var(--muted);margin-top:8px}
+.shock{display:flex;gap:12px;align-items:center;border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:10px 14px;max-width:360px;cursor:pointer;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.shock .sw{position:relative;flex:none;width:44px;height:24px;border-radius:999px;background:rgba(142,163,191,.28);transition:background .25s}
+.shock .sw::after{content:"";position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:var(--ink);transition:transform .25s}
+.shock input{position:absolute;opacity:0;width:1px;height:1px}
+.shock input:checked+.sw{background:var(--warn)}
+.shock input:checked+.sw::after{transform:translateX(20px);background:#1a1204}
+.shock input:focus-visible+.sw{outline:2px solid var(--accent);outline-offset:2px}
+.shock b{display:block;font:600 14px var(--display)}
+.shock small{color:var(--muted);font-size:12px;line-height:1.35;display:block}
+.panel{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;min-width:0;
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 14px 44px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.04)}
+.panel::after{content:"";position:absolute;left:16px;right:16px;top:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.55}
+.rise{animation:rise .7s cubic-bezier(.2,.7,.2,1) both;animation-delay:calc(var(--i,0)*80ms)}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}}
+.hero{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:16px}
+@media (max-width:900px){.hero{grid-template-columns:minmax(0,1fr)}}
+.stage{position:relative;height:470px;padding:0;overflow:hidden}
+@media (max-width:600px){.stage{height:380px}}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:pan-y;cursor:grab}
+.stage canvas:active{cursor:grabbing}
+.hud{position:absolute;left:14px;top:12px;right:14px;display:flex;justify-content:space-between;gap:12px;pointer-events:none;font:11px/1.4 var(--mono);color:var(--muted);letter-spacing:.04em}
+.hud b{color:var(--accent);font-weight:500}
+.legend{position:absolute;left:14px;bottom:12px;right:14px;display:flex;flex-wrap:wrap;gap:6px 16px;pointer-events:none;font:11px var(--mono);color:var(--muted)}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:baseline}
+.tip{position:absolute;pointer-events:none;background:rgba(6,10,18,.92);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font:12px/1.35 var(--body);white-space:nowrap;z-index:3}
+.tip small{display:block;color:var(--muted);font:11px var(--mono)}
+.msg[hidden]{display:none}
+.msg{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:24px;color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-content:start}
+.stat{padding:14px}
+.stat .k{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.stat .v{font:600 clamp(30px,4vw,42px)/1.05 var(--display);margin-top:6px;font-variant-numeric:tabular-nums}
+.stat .v span{font-size:.5em;color:var(--muted);margin-left:2px}
+.stat .n{font-size:12px;color:var(--muted);margin-top:4px}
+.stat .bar{height:4px;border-radius:2px;background:rgba(142,163,191,.2);margin-top:10px;overflow:hidden}
+.stat .bar i{display:block;height:100%;border-radius:2px;transition:width .8s cubic-bezier(.2,.7,.2,1)}
+.charts{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,.9fr) minmax(0,1.1fr);gap:16px}
+@media (max-width:1000px){.charts{grid-template-columns:minmax(0,1fr)}}
+svg{display:block;width:100%;height:auto;overflow:visible}
+.ax{fill:var(--muted);font:10.5px var(--mono)}
+.lbl{fill:var(--ink);font:11px var(--body)}
+.draw{stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1.6s .2s cubic-bezier(.3,.6,.2,1) forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.fade{animation:fadein 1s .9s both}
+@keyframes fadein{from{opacity:0}}
+.seg{transition:stroke-dasharray .8s cubic-bezier(.2,.7,.2,1),stroke-dashoffset .8s cubic-bezier(.2,.7,.2,1)}
+.lg{display:flex;flex-wrap:wrap;gap:6px 14px;font:11px var(--mono);color:var(--muted);margin-top:10px}
+.lg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px}
+.cap{font-size:12px;color:var(--muted);margin-top:8px}
+.main{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:900px){.main{grid-template-columns:minmax(0,1fr)}}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.chip{font:500 12px var(--mono);letter-spacing:.03em;padding:6px 12px;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;cursor:pointer}
+.chip:hover{border-color:var(--accent)}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#04101c}
+.row{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) auto;gap:6px 14px;align-items:center;text-align:left;width:100%;
+  background:transparent;border:0;border-top:1px solid var(--line);padding:11px 8px;color:var(--ink);font:inherit;cursor:pointer;border-radius:0}
+.row:first-child{border-top:0}
+.row:hover{background:rgba(91,214,255,.06)}
+.row[aria-current="true"]{background:rgba(91,214,255,.1);box-shadow:inset 3px 0 0 var(--accent)}
+.row .nm{font-weight:500;min-width:0}
+.row .ow{color:var(--muted);font-size:12px}
+.pb{height:6px;background:rgba(142,163,191,.2);border-radius:3px;overflow:hidden}
+.pb i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--accent),var(--violet))}
+.pct{font:11px var(--mono);color:var(--muted);margin-top:3px}
+.pill{font:500 11px var(--mono);letter-spacing:.04em;padding:3px 10px;border-radius:999px;white-space:nowrap;border:1px solid transparent}
+.on{color:var(--good);background:var(--good-bg);border-color:rgba(61,220,151,.3)}
+.at{color:var(--warn);background:var(--warn-bg);border-color:rgba(255,181,71,.3)}
+.off{color:var(--bad);background:var(--bad-bg);border-color:rgba(255,107,107,.3)}
+@media (max-width:520px){.row{grid-template-columns:minmax(0,1fr) auto}.row .bw{grid-column:1/-1;grid-row:2}}
+.dl{display:grid;grid-template-columns:auto 1fr;gap:7px 16px;margin:14px 0 0}
+.dl dt{color:var(--muted)} .dl dd{margin:0;min-width:0}
+.mono{font-family:var(--mono)}
+.track{position:relative;height:10px;background:rgba(142,163,191,.2);border-radius:5px;margin:30px 46px 32px}
+.track .fill{position:absolute;top:0;bottom:0;border-radius:5px;background:linear-gradient(90deg,var(--accent),var(--violet));box-shadow:0 0 14px rgba(91,214,255,.5)}
+.track .mk{position:absolute;top:-6px;width:2px;height:22px;background:var(--ink)}
+.track .lb{position:absolute;top:22px;font:11px var(--mono);color:var(--muted);transform:translateX(-50%);white-space:nowrap}
+.track .lb.hd{top:-24px}
+.decision{border-left:3px solid var(--warn);background:var(--warn-bg);border-radius:6px;padding:10px 12px;margin-top:14px}
+.decision b{color:var(--warn)}
+.note{white-space:pre-wrap;line-height:1.65}
+.btn{font:600 12px var(--mono);letter-spacing:.05em;padding:9px 16px;border-radius:8px;border:1px solid var(--accent);background:rgba(91,214,255,.14);color:var(--accent);cursor:pointer;margin-top:12px}
+.btn:hover{background:var(--accent);color:#04101c}
+.small{font-size:12px;color:var(--muted);margin-top:8px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.rise,.draw,.fade{animation:none!important}.draw{stroke-dashoffset:0}.seg,.stat .bar i{transition:none}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <div class="top rise">
+    <div>
+      <span class="badge">ILLUSTRATIVE SAMPLE DATA, NOT A REAL ORGANISATION</span>
+      <h1>Transformation Control Tower</h1>
+      <p class="sub">One live view of a transformation portfolio. Tower height is the benefit realised, the outline is the target, colour is status. Continuity exposure sits beside benefits, so a disruption shows in the plan before it shows in the results.</p>
+    </div>
+    <label class="shock" for="shock">
+      <input type="checkbox" id="shock"><span class="sw" aria-hidden="true"></span>
+      <span><b>Test a supply shock</b><small>Delays route-dependent initiatives by 4 weeks and raises their continuity exposure. An assumption you can change.</small></span>
+    </label>
+  </div>
+
+  <div class="hero">
+    <section class="panel stage rise" style="--i:1" aria-label="3D portfolio view">
+      <div id="stage" style="position:absolute;inset:0"></div>
+      <div class="hud"><span><b>PORTFOLIO MODEL</b> · 7 initiatives</span><span>drag to rotate · click a tower</span></div>
+      <div class="legend"><span><i style="background:var(--good)"></i>on track</span><span><i style="background:var(--warn)"></i>at risk</span><span><i style="background:var(--bad)"></i>off track</span><span><i style="background:transparent;border:1px solid var(--accent)"></i>target</span></div>
+      <div class="tip" id="tip" hidden></div>
+      <div class="msg" id="stageMsg" hidden><p>The 3D view needs WebGL, which this browser or network did not provide. The charts and list below show the same data.</p></div>
+    </section>
+    <div class="stats" id="stats"></div>
+  </div>
+
+  <div class="charts">
+    <section class="panel rise" style="--i:2" aria-label="Benefits over time"><h2>Benefits realised vs plan</h2><div id="burn"></div><p class="cap" id="burnCap"></p></section>
+    <section class="panel rise" style="--i:3" aria-label="Status mix"><h2>Status mix</h2><div id="donut"></div></section>
+    <section class="panel rise" style="--i:4" aria-label="Change readiness"><h2>Change readiness</h2><div id="radar"></div><p class="cap">Dashed ring marks an 80% readiness goal.</p></section>
+  </div>
+
+  <div class="main">
+    <section class="panel rise" style="--i:5" aria-label="Initiatives">
+      <h2>Initiatives</h2>
+      <div class="chips" id="chips"></div>
+      <div id="list"></div>
+    </section>
+    <section class="panel rise" style="--i:6" aria-label="Initiative detail" id="detail"></section>
+  </div>
+
+  <section class="panel rise" style="--i:7" aria-label="Board note">
+    <h2>Board note, drafted from the data above</h2>
+    <p class="note" id="note"></p>
+    <button class="btn" id="copy" type="button">COPY NOTE</button>
+    <p class="small" id="copyMsg" role="status"></p>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const AS_OF=new Date('2026-11-08T00:00:00');
+const DATA=[
+  {id:1,name:'Tender cycle time',short:'Tender',owner:'Procurement',unit:'days',low:true,base:100,target:60,cur:78,st:'on',ready:72,exp:0,ms:'Pilot the new approval path in two units',date:'2026-12-01',route:false,dec:'',stake:'Procurement leads, legal, three business units'},
+  {id:2,name:'Supplier onboarding',short:'Onboarding',owner:'Procurement',unit:'days',low:true,base:14,target:1,cur:4,st:'at',ready:55,exp:1,ms:'Go live with the registration portal',date:'2026-11-24',route:false,dec:'Approve extra integration resource for vendor master data.',stake:'Procurement, IT, finance, 1,500 suppliers'},
+  {id:3,name:'Board and shareholder pack preparation',short:'Board pack',owner:'Strategy Office',unit:'hours a month',low:true,base:160,target:60,cur:95,st:'on',ready:80,exp:0,ms:'Standardise paper templates and the review calendar',date:'2026-11-30',route:false,dec:'',stake:'Strategy Office, divisional heads, company secretary'},
+  {id:4,name:'Cross-site KPI baseline',short:'KPI base',owner:'Transformation Office',unit:'% of KPIs baselined',low:false,base:0,target:100,cur:64,st:'on',ready:68,exp:0,ms:'Baseline the remaining 36% of KPIs',date:'2026-12-15',route:false,dec:'',stake:'Site managers, finance, data owners'},
+  {id:5,name:'Invoice and document automation',short:'Automation',owner:'Finance',unit:'hours a month',low:true,base:400,target:100,cur:180,st:'on',ready:74,exp:0,ms:'Extend to the second company',date:'2027-01-12',route:false,dec:'',stake:'Finance, logistics, procurement'},
+  {id:6,name:'Business continuity coverage',short:'Continuity',owner:'Risk and Resilience',unit:'% of critical processes with a tested plan',low:false,base:20,target:100,cur:45,st:'off',ready:48,exp:2,ms:'Test the export-route failover plan',date:'2026-12-08',route:true,dec:'Confirm an owner for each critical process before the December test.',stake:'Operations, logistics, trading, IT'},
+  {id:7,name:'Marine and export re-planning',short:'Re-plan',owner:'Logistics',unit:'hours to re-plan after a disruption',low:true,base:72,target:24,cur:48,st:'at',ready:61,exp:1,ms:'Run a scenario drill with logistics and trading',date:'2026-12-20',route:true,dec:'Agree the trigger levels that start a re-plan.',stake:'Logistics, trading, shipping partners'}
+];
+const ST={on:'ON TRACK',at:'AT RISK',off:'OFF TRACK'}, EXP=['Low','Medium','High'];
+const CSSC={on:'var(--good)',at:'var(--warn)',off:'var(--bad)'}, HEX={on:0x3ddc97,at:0xffb547,off:0xff6b6b};
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+let filter='all', sel=1, shock=false, firstDraw=true;
+const $=id=>document.getElementById(id);
+const fmtDate=d=>d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+
+function eff(i){
+  const o={...i,d:new Date(i.date+'T00:00:00')};
+  if(shock&&i.route){
+    o.d=new Date(o.d.getTime()+28*864e5);
+    o.st=i.st==='on'?'at':'off';
+    o.exp=Math.min(2,i.exp+1);
+    if(!o.dec)o.dec='Re-baseline the milestone and confirm the fallback with the owner.';
+  }
+  return o;
+}
+function benefit(i){
+  const r=i.low?(i.base-i.cur)/(i.base-i.target):(i.cur-i.base)/(i.target-i.base);
+  return Math.max(0,Math.min(1,r));
+}
+const items=()=>DATA.map(eff);
+const avgBen=a=>a.reduce((s,x)=>s+benefit(x),0)/a.length;
+
+/* ---------- stats ---------- */
+function setNum(el,to,fmt){
+  const from=+el.dataset.v||0; el.dataset.v=to;
+  if(RM){el.textContent=fmt(to);return;}
+  const t0=performance.now();
+  (function f(t){const k=Math.min(1,(t-t0)/800),e=1-Math.pow(1-k,3);el.textContent=fmt(from+(to-from)*e);if(k<1)requestAnimationFrame(f);})(t0);
+}
+function renderStats(){
+  const a=items(),n=a.length;
+  const defs=[
+    ['On track',a.filter(x=>x.st==='on').length,v=>Math.round(v),'/ '+n,a.filter(x=>x.st==='off').length+' off track, '+a.filter(x=>x.st==='at').length+' at risk',a.filter(x=>x.st==='on').length/n*100,'var(--good)'],
+    ['Benefits realised',avgBen(a)*100,v=>Math.round(v),'%','average share of target reached',avgBen(a)*100,'var(--accent)'],
+    ['Change readiness',a.reduce((s,x)=>s+x.ready,0)/n,v=>Math.round(v),'%','average across initiatives',a.reduce((s,x)=>s+x.ready,0)/n,'var(--violet)'],
+    ['High exposure',a.filter(x=>x.exp===2).length,v=>Math.round(v),'','initiatives with high continuity exposure',a.filter(x=>x.exp===2).length/n*100,'var(--bad)']
+  ];
+  if(!$('stats').children.length){
+    $('stats').innerHTML=defs.map((d,i)=>`<div class="panel stat rise" style="--i:${i+2}"><div class="k">${d[0]}</div><div class="v"><b data-v="0" style="font-weight:inherit"></b><span>${d[3]}</span></div><div class="n"></div><div class="bar"><i></i></div></div>`).join('');
+  }
+  [...$('stats').children].forEach((el,i)=>{
+    const d=defs[i];
+    setNum(el.querySelector('b'),d[1],d[2]);
+    el.querySelector('.n').textContent=d[4];
+    const bar=el.querySelector('.bar i'); bar.style.background=d[6]; bar.style.width=Math.min(100,d[5])+'%';
+  });
+}
+
+/* ---------- charts ---------- */
+function renderBurn(){
+  const a=items(), ben=avgBen(a)*100;
+  const months=['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb'];
+  const plan=[0,15,30,48,65,78,90,100];
+  const hist=[.06,.19,.4,.68,1].map(f=>ben*f);
+  const g0=hist[4]-hist[3], k=shock?0.7:1, fc=[hist[4]];
+  for(let m=1;m<=3;m++)fc.push(Math.min(100,fc[m-1]+g0*Math.pow(0.8,m)*k));
+  const W=560,H=270,pl=38,pr=18,pt=22,pb=30;
+  const X=i=>pl+i*(W-pl-pr)/7, Y=v=>pt+(1-v/100)*(H-pt-pb);
+  const line=(arr,off)=>arr.map((v,i)=>(i?'L':'M')+X(i+off).toFixed(1)+' '+Y(v).toFixed(1)).join(' ');
+  const act=line(hist,0), fcast=line(fc,4), pln=line(plan,0);
+  const area=act+' L'+X(4).toFixed(1)+' '+Y(0)+' L'+X(0).toFixed(1)+' '+Y(0)+' Z';
+  const fcol=shock?'var(--warn)':'var(--accent)';
+  const dr=firstDraw?'draw':'';
+  $('burn').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Benefits realised against plan, with a forecast to February">
+    <defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5bd6ff" stop-opacity=".35"/><stop offset="1" stop-color="#5bd6ff" stop-opacity="0"/></linearGradient></defs>
+    ${[0,25,50,75,100].map(v=>`<line x1="${pl}" x2="${W-pr}" y1="${Y(v)}" y2="${Y(v)}" stroke="rgba(120,190,255,.13)"/><text class="ax" x="${pl-8}" y="${Y(v)+3}" text-anchor="end">${v}</text>`).join('')}
+    ${months.map((m,i)=>`<text class="ax" x="${X(i)}" y="${H-8}" text-anchor="middle">${m}</text>`).join('')}
+    <line x1="${X(4)}" x2="${X(4)}" y1="${pt-6}" y2="${H-pb}" stroke="rgba(232,241,255,.35)" stroke-dasharray="3 4"/><text class="ax" x="${X(4)}" y="${pt-10}" text-anchor="middle" style="fill:var(--ink)">today</text>
+    <path d="${pln}" fill="none" stroke="rgba(142,163,191,.8)" stroke-width="1.6" stroke-dasharray="5 5"/>
+    <path d="${area}" fill="url(#ag)"/>
+    <path d="${act}" fill="none" stroke="var(--accent)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" pathLength="1" class="${dr}" style="filter:drop-shadow(0 0 6px rgba(91,214,255,.8))"/>
+    <path d="${fcast}" fill="none" stroke="${fcol}" stroke-width="2.2" stroke-dasharray="2 5" stroke-linecap="round" class="${firstDraw?'fade':''}"/>
+    <circle cx="${X(4)}" cy="${Y(hist[4])}" r="5" fill="var(--accent)" style="filter:drop-shadow(0 0 8px rgba(91,214,255,.9))"/>
+    <text class="lbl" x="${X(4)-8}" y="${Y(hist[4])-12}" text-anchor="end">${Math.round(hist[4])}% now</text>
+    <circle cx="${X(7)}" cy="${Y(fc[3])}" r="4.5" fill="${fcol}"/>
+    <text class="lbl" x="${X(7)}" y="${Y(fc[3])+18}" text-anchor="end" style="fill:${fcol}">${Math.round(fc[3])}% forecast</text>
+    <text class="ax" x="${X(7)}" y="${Y(100)-8}" text-anchor="end">plan 100%</text>
+  </svg>
+  <div class="lg"><span><i style="background:var(--accent)"></i>actual</span><span><i style="background:rgba(142,163,191,.9)"></i>plan</span><span><i style="background:${fcol}"></i>forecast</span></div>`;
+  $('burnCap').textContent='Illustrative forecast: monthly gains shrink by 20% each month'+(shock?', and the supply shock removes 30% of the remaining gains.':'.');
+}
+function renderDonut(){
+  const a=items(),n=a.length,C=2*Math.PI*54;
+  const cnt={on:a.filter(x=>x.st==='on').length,at:a.filter(x=>x.st==='at').length,off:a.filter(x=>x.st==='off').length};
+  let cum=0;
+  const segs=['on','at','off'].map(k=>{const len=C*cnt[k]/n;const s=`<circle class="seg" cx="90" cy="90" r="54" fill="none" stroke-width="16" style="stroke:${CSSC[k]}" stroke-dasharray="${Math.max(0,len-(cnt[k]?4:0))} ${C}" stroke-dashoffset="${-cum}"/>`;cum+=len;return s;}).join('');
+  $('donut').innerHTML=`<svg viewBox="0 0 180 180" role="img" aria-label="${cnt.on} on track, ${cnt.at} at risk, ${cnt.off} off track" style="max-width:240px;margin:0 auto">
+    <circle cx="90" cy="90" r="54" fill="none" stroke="rgba(142,163,191,.18)" stroke-width="16"/>
+    <g transform="rotate(-90 90 90)">${segs}</g>
+    <text x="90" y="90" text-anchor="middle" style="fill:var(--ink);font:600 30px var(--display)">${cnt.on}/${n}</text>
+    <text x="90" y="110" text-anchor="middle" class="ax">on track</text></svg>
+    <div class="lg" style="justify-content:center"><span><i style="background:var(--good)"></i>${cnt.on} on track</span><span><i style="background:var(--warn)"></i>${cnt.at} at risk</span><span><i style="background:var(--bad)"></i>${cnt.off} off track</span></div>`;
+}
+function renderRadar(){
+  const a=items(),n=a.length,cx=150,cy=136,R=92;
+  const P=(i,v)=>{const ang=-Math.PI/2+2*Math.PI*i/n;return[cx+Math.cos(ang)*R*v/100,cy+Math.sin(ang)*R*v/100];};
+  const poly=v=>a.map((_,i)=>P(i,typeof v==='function'?v(a[i]):v).map(c=>c.toFixed(1)).join(',')).join(' ');
+  const rings=[25,50,75,100].map(v=>`<polygon points="${poly(v)}" fill="none" stroke="rgba(120,190,255,.14)"/>`).join('');
+  const axes=a.map((_,i)=>{const p=P(i,100);return`<line x1="${cx}" y1="${cy}" x2="${p[0]}" y2="${p[1]}" stroke="rgba(120,190,255,.12)"/>`;}).join('');
+  const labels=a.map((x,i)=>{const p=P(i,122),an=p[0]<cx-8?'end':p[0]>cx+8?'start':'middle';return`<text class="ax" x="${p[0]}" y="${p[1]+3}" text-anchor="${an}" style="${x.id===sel?'fill:var(--ink)':''}">${x.short}</text>`;}).join('');
+  const dots=a.map((x,i)=>{const p=P(i,x.ready);return`<circle cx="${p[0]}" cy="${p[1]}" r="${x.id===sel?6:3.5}" fill="${x.id===sel?'var(--ink)':'var(--violet)'}" style="${x.id===sel?'filter:drop-shadow(0 0 6px #fff)':''}"/>`;}).join('');
+  $('radar').innerHTML=`<svg viewBox="-30 0 360 276" role="img" aria-label="Change readiness by initiative">${rings}${axes}
+    <polygon points="${poly(80)}" fill="none" stroke="rgba(232,241,255,.5)" stroke-dasharray="4 4"/>
+    <polygon points="${poly(x=>x.ready)}" fill="rgba(155,140,255,.25)" stroke="var(--violet)" stroke-width="2" style="filter:drop-shadow(0 0 6px rgba(155,140,255,.6))"/>${dots}${labels}</svg>`;
+}
+
+/* ---------- list, detail, note ---------- */
+function renderChips(){
+  const a=items(),c=k=>a.filter(x=>x.st===k).length;
+  const defs=[['all','ALL ('+a.length+')'],['on','ON TRACK ('+c('on')+')'],['at','AT RISK ('+c('at')+')'],['off','OFF TRACK ('+c('off')+')']];
+  $('chips').innerHTML=defs.map(d=>`<button class="chip" type="button" data-f="${d[0]}" aria-pressed="${filter===d[0]}">${d[1]}</button>`).join('');
+}
+function renderList(){
+  const a=items().filter(x=>filter==='all'||x.st===filter);
+  if(!a.some(x=>x.id===sel)&&a.length)sel=a[0].id;
+  $('list').innerHTML=a.length?a.map(x=>{const b=Math.round(benefit(x)*100);
+    return`<button class="row" type="button" data-id="${x.id}" aria-current="${x.id===sel}">
+      <div><div class="nm">${x.name}</div><div class="ow">${x.owner} · next: ${fmtDate(x.d)}</div></div>
+      <div class="bw"><div class="pb" role="img" aria-label="${b}% of target"><i style="width:${b}%"></i></div><div class="pct">${b}% of target</div></div>
+      <span class="pill ${x.st}">${ST[x.st]}</span></button>`;}).join(''):'<p class="small">No initiatives in this status.</p>';
+}
+function renderDetail(){
+  const x=items().find(i=>i.id===sel); if(!x){$('detail').innerHTML='';return;}
+  const lo=Math.min(x.base,x.target),hi=Math.max(x.base,x.target),span=hi-lo||1,pos=v=>(v-lo)/span*100;
+  const bp=pos(x.base),cp=pos(x.cur),tp=pos(x.target),from=Math.min(bp,cp),to=Math.max(bp,cp);
+  $('detail').innerHTML=`<h2>Selected initiative</h2>
+    <div style="display:flex;gap:10px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap">
+      <div style="min-width:0;font:600 19px/1.25 var(--display)">${x.name}</div><span class="pill ${x.st}">${ST[x.st]}</span></div>
+    <p class="small" style="margin-top:2px">Measured in ${x.unit}</p>
+    <div class="track" aria-hidden="true"><div class="fill" style="left:${from}%;width:${to-from}%"></div>
+      <div class="mk" style="left:${bp}%"></div><div class="lb hd" style="left:${bp}%">baseline ${x.base}</div>
+      <div class="mk" style="left:${tp}%"></div><div class="lb hd" style="left:${tp}%">target ${x.target}</div>
+      <div class="lb" style="left:${cp}%">now ${x.cur}</div></div>
+    <dl class="dl">
+      <dt>Owner</dt><dd>${x.owner}</dd>
+      <dt>Next milestone</dt><dd>${x.ms}<br><span class="mono">${fmtDate(x.d)}</span>${shock&&x.route?' (4 weeks later under the shock)':''}</dd>
+      <dt>Benefit realised</dt><dd class="mono">${Math.round(benefit(x)*100)}% of target</dd>
+      <dt>Change readiness</dt><dd class="mono">${x.ready}%</dd>
+      <dt>Continuity exposure</dt><dd>${EXP[x.exp]}${x.route?' (depends on export routes)':''}</dd>
+      <dt>Stakeholders</dt><dd>${x.stake}</dd></dl>
+    ${x.dec?`<div class="decision"><b>Decision needed.</b> ${x.dec}</div>`:''}`;
+}
+function noteText(){
+  const a=items(),n=a.length,c=k=>a.filter(x=>x.st===k).length;
+  const decs=a.filter(x=>x.dec).map(x=>'- '+x.name+': '+x.dec);
+  return`Portfolio status as of ${fmtDate(AS_OF)} (sample data)\n${c('on')} of ${n} initiatives are on track, ${c('at')} at risk and ${c('off')} off track. Benefits realised average ${Math.round(avgBen(a)*100)}% of target.\n`+
+    (shock?'Supply shock scenario applied: route-dependent initiatives slip by 4 weeks and their continuity exposure rises.\n':'')+
+    (decs.length?'Decisions needed:\n'+decs.join('\n'):'No decisions needed this month.');
+}
+
+/* ---------- 3D scene ---------- */
+let S3=null;
+function init3D(){
+  const host=$('stage'),msg=$('stageMsg');
+  if(!window.THREE){msg.hidden=false;return;}
+  let renderer;
+  try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});}catch(e){msg.hidden=false;return;}
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  host.appendChild(renderer.domElement);
+  const scene=new THREE.Scene(), cam=new THREE.PerspectiveCamera(42,1,.1,100), rig=new THREE.Group(); scene.add(rig);
+  scene.add(new THREE.AmbientLight(0x8fb4ff,.6));
+  const dl=new THREE.DirectionalLight(0xffffff,.85); dl.position.set(5,10,6); scene.add(dl);
+  const pl=new THREE.PointLight(0x5bd6ff,1.4,22); pl.position.set(0,3,0); scene.add(pl);
+  const basic=(c,o,extra)=>new THREE.MeshBasicMaterial(Object.assign({color:c,transparent:true,opacity:o,side:THREE.DoubleSide,depthWrite:false},extra||{}));
+  // floor
+  const disc=new THREE.Mesh(new THREE.CircleGeometry(7.4,72),basic(0x0b1830,.7)); disc.rotation.x=-Math.PI/2; rig.add(disc);
+  [2,4.2,6.4].forEach(r=>{const m=new THREE.Mesh(new THREE.RingGeometry(r-.015,r+.015,128),basic(0x5bd6ff,.28)); m.rotation.x=-Math.PI/2; m.position.y=.01; rig.add(m);});
+  const R=4.2, n=DATA.length, spokes=[];
+  DATA.forEach((d,i)=>{const a=i/n*Math.PI*2; spokes.push(0,.012,0,Math.cos(a)*6.4,.012,Math.sin(a)*6.4);});
+  const sg=new THREE.BufferGeometry(); sg.setAttribute('position',new THREE.Float32BufferAttribute(spokes,3));
+  rig.add(new THREE.LineSegments(sg,new THREE.LineBasicMaterial({color:0x5bd6ff,transparent:true,opacity:.16})));
+  // core
+  const core=new THREE.Mesh(new THREE.IcosahedronGeometry(.8,1),new THREE.MeshBasicMaterial({color:0x5bd6ff,wireframe:true,transparent:true,opacity:.9})); core.position.y=1.1; rig.add(core);
+  const coreGlow=new THREE.Mesh(new THREE.SphereGeometry(.55,24,24),basic(0x5bd6ff,.28)); coreGlow.position.y=1.1; rig.add(coreGlow);
+  // towers
+  const TOP=4.6, bodyGeo=new THREE.CylinderGeometry(.62,.62,1,6), ghostGeo=new THREE.EdgesGeometry(new THREE.CylinderGeometry(.68,.68,TOP,6)), capGeo=new THREE.CylinderGeometry(.62,.62,.07,6);
+  const towers=[], bodies=[];
+  DATA.forEach((d,i)=>{
+    const a=i/n*Math.PI*2, g=new THREE.Group(); g.position.set(Math.cos(a)*R,0,Math.sin(a)*R); rig.add(g);
+    const body=new THREE.Mesh(bodyGeo,new THREE.MeshStandardMaterial({color:0x10213a,emissive:0x3ddc97,emissiveIntensity:.5,metalness:.45,roughness:.35,transparent:true,opacity:.93}));
+    body.userData.id=d.id; g.add(body); bodies.push(body);
+    const ghost=new THREE.LineSegments(ghostGeo,new THREE.LineBasicMaterial({color:0x5bd6ff,transparent:true,opacity:.35})); ghost.position.y=TOP/2; g.add(ghost);
+    const cap=new THREE.Mesh(capGeo,new THREE.MeshBasicMaterial({color:0x3ddc97})); g.add(cap);
+    towers.push({id:d.id,route:d.route,g,body,cap,h:RM?1:.02,th:1,col:new THREE.Color(0x3ddc97),tcol:new THREE.Color(0x3ddc97)});
+  });
+  const beam=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,9,8),basic(0xffffff,.28,{blending:THREE.AdditiveBlending})); beam.position.y=4.5; rig.add(beam);
+  // shock wave and dependency lines
+  const wave=new THREE.Mesh(new THREE.RingGeometry(.96,1,96),basic(0xffb547,.8)); wave.rotation.x=-Math.PI/2; wave.position.y=.04; wave.visible=false; rig.add(wave);
+  const lines=new THREE.Group(); lines.visible=false; rig.add(lines);
+  towers.filter(o=>o.route).forEach(o=>{const lg=new THREE.BufferGeometry(); lg.setAttribute('position',new THREE.Float32BufferAttribute([0,1.1,0,o.g.position.x,.6,o.g.position.z],3)); lines.add(new THREE.Line(lg,new THREE.LineBasicMaterial({color:0xffb547,transparent:true,opacity:.7})));});
+  // particles
+  const pp=[]; for(let i=0;i<320;i++){const r=6+Math.random()*10,t=Math.random()*Math.PI*2,y=Math.random()*9-1; pp.push(Math.cos(t)*r,y,Math.sin(t)*r);}
+  const pg=new THREE.BufferGeometry(); pg.setAttribute('position',new THREE.Float32BufferAttribute(pp,3));
+  const pts=new THREE.Points(pg,new THREE.PointsMaterial({color:0x9bd8ff,size:.06,transparent:true,opacity:.6,depthWrite:false})); scene.add(pts);
+
+  let w=1,h=1,dist=12.5,elev=.42,dragging=false,moved=0,lx=0,ly=0,lastI=-1e9,hover=null,vis=true;
+  function size(){w=host.clientWidth||1;h=host.clientHeight||1;renderer.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();dist=cam.aspect<.9?23:cam.aspect<1.3?19:16.5;}
+  new ResizeObserver(size).observe(host); size();
+  new IntersectionObserver(e=>{vis=e[0].isIntersecting;}).observe(host);
+  const ray=new THREE.Raycaster(), ndc=new THREE.Vector2(), el=renderer.domElement, tip=$('tip');
+  function pick(ev){const r=el.getBoundingClientRect();ndc.set((ev.clientX-r.left)/r.width*2-1,-((ev.clientY-r.top)/r.height)*2+1);ray.setFromCamera(ndc,cam);const hit=ray.intersectObjects(bodies,false)[0];return hit?hit.object.userData.id:null;}
+  el.addEventListener('pointerdown',e=>{dragging=true;moved=0;lx=e.clientX;ly=e.clientY;lastI=performance.now();try{el.setPointerCapture(e.pointerId);}catch(_){}});
+  el.addEventListener('pointermove',e=>{
+    if(dragging){const dx=e.clientX-lx,dy=e.clientY-ly;moved+=Math.abs(dx)+Math.abs(dy);lx=e.clientX;ly=e.clientY;rig.rotation.y+=dx*.008;elev=Math.max(.12,Math.min(.95,elev+dy*.004));lastI=performance.now();return;}
+    const id=pick(e);hover=id;el.style.cursor=id?'pointer':'grab';
+    if(id){const x=items().find(i=>i.id===id),r=host.getBoundingClientRect();tip.hidden=false;tip.innerHTML=`${x.name}<small>${ST[x.st]} · ${Math.round(benefit(x)*100)}% of target</small>`;tip.style.left=Math.min(r.width-190,e.clientX-r.left+14)+'px';tip.style.top=Math.max(40,e.clientY-r.top-10)+'px';}else tip.hidden=true;
+  });
+  el.addEventListener('pointerleave',()=>{hover=null;tip.hidden=true;});
+  el.addEventListener('pointerup',e=>{dragging=false;if(moved<6){const id=pick(e);if(id)selectInit(id);}});
+  el.addEventListener('pointercancel',()=>{dragging=false;});
+  const sw=new THREE.Vector3();
+  function frame(now){
+    requestAnimationFrame(frame);
+    if(!vis||document.hidden)return;
+    const t=now/1000;
+    if(!RM&&!dragging&&now-lastI>2500)rig.rotation.y+=.0016;
+    if(!RM){core.rotation.y+=.004;core.rotation.x+=.002;pts.rotation.y+=.0003;coreGlow.scale.setScalar(1+.08*Math.sin(t*2));}
+    towers.forEach(o=>{
+      o.h+=(o.th-o.h)*(RM?1:.06);
+      const s=o.id===sel?1.14:o.id===hover?1.06:1;
+      o.body.scale.set(s,Math.max(o.h,.02),s); o.body.position.y=o.h/2;
+      o.cap.scale.set(s,1,s); o.cap.position.y=o.h+.035;
+      o.col.lerp(o.tcol,.08); o.body.material.emissive.copy(o.col); o.cap.material.color.copy(o.col);
+      let ei=.5+(o.id===sel?.35:0); if(shock&&o.route&&!RM)ei+=.35*Math.sin(t*6);
+      o.body.material.emissiveIntensity=ei;
+      if(o.id===sel){beam.position.x=o.g.position.x;beam.position.z=o.g.position.z;beam.material.color.copy(o.col);}
+    });
+    if(shock){
+      lines.visible=true; lines.children.forEach(l=>{l.material.opacity=RM?.7:.45+.3*Math.sin(t*5);});
+      if(!RM){const p=(t*.45)%1;wave.visible=true;wave.scale.setScalar(.6+p*7);wave.material.opacity=.8*(1-p);}else wave.visible=false;
+    }else{lines.visible=false;wave.visible=false;}
+    cam.position.set(0,Math.sin(elev)*dist+1,Math.cos(elev)*dist); cam.lookAt(0,1.7,0);
+    renderer.render(scene,cam);
+  }
+  requestAnimationFrame(frame);
+  S3={sync(){const a=items();towers.forEach(o=>{const x=a.find(i=>i.id===o.id);o.th=.35+benefit(x)*4.2;o.tcol.setHex(HEX[x.st]);o.route=x.route;});}};
+  S3.sync();
+}
+
+/* ---------- wiring ---------- */
+function selectInit(id){sel=id;if(filter!=='all'&&!items().some(x=>x.id===id&&x.st===filter))filter='all';renderChips();renderList();renderDetail();renderRadar();}
+function renderAll(){renderStats();renderChips();renderList();renderDetail();renderDonut();renderBurn();renderRadar();$('note').textContent=noteText();if(S3)S3.sync();firstDraw=false;}
+$('chips').addEventListener('click',e=>{const b=e.target.closest('[data-f]');if(b){filter=b.dataset.f;renderChips();renderList();renderDetail();renderRadar();}});
+$('list').addEventListener('click',e=>{const b=e.target.closest('[data-id]');if(b)selectInit(+b.dataset.id);});
+$('shock').addEventListener('change',e=>{shock=e.target.checked;renderAll();});
+$('copy').addEventListener('click',()=>{
+  const txt=noteText(),m=$('copyMsg');
+  const fb=()=>{const r=document.createRange();r.selectNodeContents($('note'));const s=getSelection();s.removeAllRanges();s.addRange(r);m.textContent='Select and copy the note above.';};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(()=>{m.textContent='Note copied.';},fb);}else fb();
+});
+renderAll();
+try{init3D();}catch(err){$('stageMsg').hidden=false;}
+</script>
+
+</body>
+</html>
